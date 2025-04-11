@@ -56,9 +56,8 @@ export const STUDY_MODES = [
 ];
 
 export const CAMPUSES = [
-  'Main Campus',
-  'City Campus',
-  'Westlands Campus'
+  'Athi River Campus',
+  'Nairobi Campus'
 ];
 
 export const INTAKES = [

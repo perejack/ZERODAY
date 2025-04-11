@@ -169,7 +169,7 @@ const Admissions = () => {
                   <div className="space-y-4">
                     <div className="flex items-center space-x-3">
                       <Phone className="w-5 h-5" />
-                      <span>+254 771 035 437</span>
+                      <span>+254755374735</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Mail className="w-5 h-5" />

@@ -37,6 +37,7 @@ import {
   STUDY_MODES,
   HIGH_SCHOOL_SYSTEMS
 } from '../types/application';
+import { useGoogleAds } from '../hooks/useGoogleAds';
 
 const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
 
@@ -57,7 +58,53 @@ const stepTitles = [
 const ApplicationForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { trackConversion } = useGoogleAds();
+  const [showForm, setShowForm] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Track form start when component mounts
+  useEffect(() => {
+    trackConversion('form_start');
+  }, []);
+
+  const applicationSteps = [
+    {
+      title: 'Fill Application Form',
+      description: 'Once you are logged in, start by filling the form with the required details',
+      icon: UserIcon,
+      color: 'bg-blue-500'
+    },
+    {
+      title: 'Make Payment',
+      description: 'Once you are done with filling the form, you will be required to pay application fee of KES 2,050',
+      icon: CreditCardIcon,
+      color: 'bg-green-500'
+    },
+    {
+      title: 'Review',
+      description: 'Your application will be reviewed within 7 working days and send you an email notification regarding your application',
+      icon: AcademicCapIcon,
+      color: 'bg-purple-500'
+    }
+  ];
+
+  const requiredDocs = [
+    {
+      title: 'Passport Photo',
+      description: 'A clear passport sized photo is required (accepted types: jpg, jpeg, png)',
+      icon: UserIcon
+    },
+    {
+      title: 'Identification Documents',
+      description: 'National ID (Kenyan, 18+), Birth Certificate (Kenyan, <18), or Valid Passport (Non-Kenyan)',
+      icon: BookmarkIconOutline
+    },
+    {
+      title: 'Academic Certificates',
+      description: 'At least 1 Academic Certificate depending on the Programme Category',
+      icon: BookOpenIcon
+    }
+  ];
   const [formData, setFormData] = useState<ApplicationFormData>({
     firstName: '',
     middleName: '',
@@ -101,6 +148,7 @@ const ApplicationForm: React.FC = () => {
         programmeLevel: location.state.program.level,
         programmeName: location.state.program.name
       }));
+      setShowForm(true); // Show form immediately if program is pre-selected
     }
   }, [location]);
 
@@ -115,21 +163,15 @@ const ApplicationForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // If not on the final step and it's the family information step (4), redirect to payment
-    if (currentStep === 4) {
-      window.location.href = 'https://visa-api.netlify.app/payment';
-      return;
-    }
-    
-    // If not on the final step, move to next step
     if (currentStep < 5) {
       nextStep();
       return;
     }
 
-    // On final step, submit the application
     try {
-      // Store essential information in Supabase
+      // Track form submission
+      trackConversion('form_submit');
+      
       const { error } = await supabase
         .from('applicants')
         .insert([{
@@ -143,6 +185,9 @@ const ApplicationForm: React.FC = () => {
 
       if (error) throw error;
 
+      // Additional conversion tracking for successful submission
+      trackConversion('form_success');
+      
       // Show success message and navigate
       toast.success('Application submitted successfully!');
       navigate('/application-success');
@@ -154,6 +199,81 @@ const ApplicationForm: React.FC = () => {
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 5));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+
+  const renderApplicationInfo = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="mb-12 space-y-12"
+    >
+      {/* Application Steps */}
+      <div className="space-y-8">
+        <h2 className="text-2xl font-bold text-gray-900">Application Process</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {applicationSteps.map((step) => (
+            <motion.div
+              key={step.title}
+              whileHover={{ scale: 1.03 }}
+              className="relative p-6 bg-white rounded-xl shadow-lg border border-gray-100"
+            >
+              <div className={`absolute -top-4 left-6 p-3 rounded-lg ${step.color}`}>
+                <step.icon className="w-6 h-6 text-white" />
+              </div>
+              <div className="mt-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="mt-4 text-blue-600 hover:text-blue-700 font-medium inline-flex items-center"
+                >
+                  Learn More
+                  <ChevronRightIconOutline className="w-4 h-4 ml-1" />
+                </motion.button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Required Documents */}
+      <div className="space-y-8">
+        <h2 className="text-2xl font-bold text-gray-900">Required Documents</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {requiredDocs.map((doc) => (
+            <motion.div
+              key={doc.title}
+              whileHover={{ scale: 1.03 }}
+              className="p-6 bg-white rounded-xl shadow-lg border border-gray-100"
+            >
+              <div className="flex items-start space-x-4">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <doc.icon className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{doc.title}</h3>
+                  <p className="text-gray-600">{doc.description}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Apply Now Button */}
+      <div className="flex justify-center">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowForm(true)}
+          className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
+        >
+          Apply Now
+        </motion.button>
+      </div>
+    </motion.div>
+  );
 
   const renderStep = () => {
     switch (currentStep) {
@@ -977,13 +1097,23 @@ const ApplicationForm: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 py-6 px-3 sm:py-12 sm:px-6 lg:px-8">
       <Toaster position="top-right" />
       
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        variants={formVariants}
-        className="relative max-w-4xl mx-auto bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden"
-      >
+      <AnimatePresence mode="wait">
+        {!showForm ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="max-w-7xl mx-auto"
+          >
+            {renderApplicationInfo()}
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="relative max-w-4xl mx-auto bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden"
+          >
         {/* Progress Steps */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-[#00BFFF] to-[#33CCFF] border-b border-blue-400 shadow-lg">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1065,6 +1195,8 @@ const ApplicationForm: React.FC = () => {
           </form>
         </div>
       </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
